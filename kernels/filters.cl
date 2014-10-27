@@ -3213,3 +3213,163 @@ __kernel void polarcoord_filter(__read_only image2d_t input,
   */
   write_imagef(output,convert_int2(coord),color);
 }
+
+__kernel void skin_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 size = get_image_dim(input);
+
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float r = color.x;
+   float g = color.y;
+   float b = color.z;
+   
+   float xy = (r - g);
+   xy = xy > 0 ? xy : -xy;
+   
+   if((r <= 45.0f / 255.0f) || 
+      (g <= 40.0f / 255.0f) || 
+      (b <= 20.0f / 255.0f) ||
+      (r <= g) ||
+      (r <= b) ||
+      ((r - min(g,b)) <= 15.0f / 255.0f) ||
+      (xy <= 15.0f / 255.0f)){
+      color.x = color.y = color.z = 0;
+   }
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void vignette_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float amount = 2.0f;
+   float2 vUv = (float2)(100,100);
+   
+   float dist = distance(vUv,(float2)(dim.x / 2,dim.y / 2));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   float size = 256.0f;
+   color.xyz *= smoothstep(0.8f,size * 0.799f,dist * (amount + size));
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+float lum(float3 color){
+    return 0.3f * color.x + 0.59f * color.y + 0.11f * color.z;
+}
+
+__kernel void color_clip_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float L = lum(color.xyz);
+   
+   float n = min(min(color.x,color.y),color.z);
+   float x = max(max(color.x,color.y),color.z);
+   
+   if(n < 0.0f){
+      color.xyz = L +(((color.xyz - L) * L) / (L - n));
+   }
+   
+   if(x > 1.0f){
+      color.xyz = L + (((color.xyz - L) * (1 - L)) / (x - L));
+   }
+   
+   color.xyz += (0.5f - L);
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+__kernel void bias_clip_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+
+   float amount = 0.75f;
+   
+   color.xyz *= clamp(color.xyz / (( 1.0f / amount - 1.9f) * (0.9f - color.xyz) + 1.0f),0.0f,1.0f);
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void duo_tone_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float3 dark_color = (float3)(1,1,0);
+   float3 light_color = (float3)(0,0,1);
+   
+   float gray = lum(color.xyz);
+   
+   float luminance = dot(color.xyz,gray);
+   
+   color.xyz = clamp(mix(dark_color,light_color,luminance),0.0f,1.0f);
+   
+   write_imagef(output,coord,color);
+   
+}
+
+__kernel void opacity_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float opacity_value = 0.5f;
+   
+   color.w *= opacity_value;
+   
+   write_imagef(output,coord,color);
+   
+}

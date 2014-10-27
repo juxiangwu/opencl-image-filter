@@ -10,13 +10,17 @@ using namespace std;
 
 int main(int argc,char * argv[])
 {
-    const char * imageFile = "/home/jenson/Pictures/f3.jpg";
-    const char * imageFile2 = "/home/jenson/Pictures/f3.jpg";
+    if(argc < 3){
+        std::cout << "usage:" << argv[0] << " <image> <kernel name>" << std::endl;
+        return -1;
+    }
+    const char * imageFile = argv[1];
+//    const char * imageFile2 = argv[2];
 
     const char * kernelFile = "kernels/filters.cl";
     cv::Mat src = cv::imread(imageFile);
 //    cv::Mat src2 = cv::imread(imageFile2);
-    cv::cvtColor(src,src,CV_BGR2BGRA);
+    cv::cvtColor(src,src,CV_BGR2RGBA);
 //    cv::cvtColor(src2,src2,CV_BGR2BGRA);
 
     cv::Mat dst(src.size(),src.type());
@@ -146,7 +150,7 @@ int main(int argc,char * argv[])
      }
 
     //cl_kernel kernel = clCreateKernel(program,"sepia_filter2",&status);
-    cl_kernel kernel = clCreateKernel(program,argv[1],&status);
+    cl_kernel kernel = clCreateKernel(program,argv[2],&status);
 
     if(status != CL_SUCCESS){
         std::cerr << "cannot create kernel:" << status << std::endl;
@@ -200,6 +204,8 @@ int main(int argc,char * argv[])
     }
 
     //cv::add(dst,src,dst);
+    cv::cvtColor(src,src,CV_RGBA2BGRA);
+    cv::cvtColor(dst,dst,CV_RGBA2BGRA);
 
     cv::imshow("src",src);
     cv::imshow("dst",dst);
