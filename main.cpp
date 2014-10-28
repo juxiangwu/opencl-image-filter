@@ -209,8 +209,10 @@ int main(int argc,char * argv[])
 
     cv::imshow("src",src);
     cv::imshow("dst",dst);
-
-//    cv::imwrite("images/output.png",dst);
+    std::string fname("images/");
+    fname.append(argv[2]);
+    fname.append(".png");
+    cv::imwrite(fname.c_str(),dst);
 
     cv::waitKey();
 
