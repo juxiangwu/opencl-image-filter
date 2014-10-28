@@ -842,7 +842,7 @@ __kernel void vert_horiz_blur_filter(__read_only image2d_t input,
     write_imagef(output,coord,color);
 }
 
-__kernel void bloom_old(__read_only image2d_t input,
+__kernel void bloom_old_filter(__read_only image2d_t input,
                               __write_only image2d_t output){
     const sampler_t sampler = CLK_FILTER_NEAREST |
     CLK_NORMALIZED_COORDS_FALSE |
@@ -880,7 +880,7 @@ __kernel void bloom_old(__read_only image2d_t input,
     write_imagef(output,coord,color);
 }
 
-__kernel void bloom_new(__read_only image2d_t input,
+__kernel void bloom_new_filter(__read_only image2d_t input,
                               __write_only image2d_t output){
     const sampler_t sampler = CLK_FILTER_NEAREST |
     CLK_NORMALIZED_COORDS_FALSE |
@@ -924,6 +924,101 @@ __kernel void bloom_new(__read_only image2d_t input,
     write_imagef(output,coord,(float4)(dstRGB,1.0f));
     
 }
+
+__kernel void bloom_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    const sampler_t sampler = CLK_FILTER_NEAREST |
+    CLK_NORMALIZED_COORDS_FALSE |
+    CLK_ADDRESS_CLAMP_TO_EDGE;
+
+    const int2 size = get_image_dim(input);
+
+    float2 coord = (float2)(get_global_id(0),get_global_id(1));
+    
+    
+    float4 sum = (0.0f,0.0f,0.0f,0.0f);
+    float a = 0.15f;
+    float g = 0.15f;
+    float e = 0.25f;
+    float b = 0.25f;
+    float f = 0.35f;
+    float c = 0.55f;
+    float d = 0.45f;
+    
+    sum += read_imagef(input,sampler,coord + (float2)(-3,-4) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-3,-3) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-2,-3) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-1,-3) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-0,-3) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(1,-3) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(2,-3) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(3,-3) * a) * g;
+    
+    sum += read_imagef(input,sampler,coord + (float2)(-4,-2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-3,-2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-2,-2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-1,-2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-0,-2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(1,-2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(2,-2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(3,-2) * a) * g;
+    
+    sum += read_imagef(input,sampler,coord + (float2)(-4,-1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-3,-1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-2,-1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-1,-1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-0,-1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(1,-1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(2,-1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(3,-1) * a) * g;
+    
+    sum += read_imagef(input,sampler,coord + (float2)(-4,0) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-3,0) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-2,0) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-1,0) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-0,0) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(1,0) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(2,0) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(3,0) * a) * g;
+    
+    sum += read_imagef(input,sampler,coord + (float2)(-4,1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-3,1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-2,1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-1,1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-0,1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(1,1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(2,1) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(3,1) * a) * g;
+
+    sum += read_imagef(input,sampler,coord + (float2)(-4,2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-3,2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-2,2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-1,2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(-0,2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(1,2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(2,2) * a) * g;
+    sum += read_imagef(input,sampler,coord + (float2)(3,2) * a) * g;
+    
+    float4 color = read_imagef(input,sampler,coord);
+    
+    if(color.x < e){
+        float4 rgba = sum * sum * b + color;
+        rgba.w = 1.0f;
+        write_imagef(output,convert_int2(coord),rgba);
+    }else{
+        if(color.x < f){
+            float4 rgba = sum * sum * c + color;
+            rgba.w = 1.0f;
+            write_imagef(output,convert_int2(coord),rgba);
+        }else{
+            float4 rgba = sum * sum * d + color;
+            rgba.w = 1.0f;
+            write_imagef(output,convert_int2(coord),rgba);
+        }
+    }
+}
+
+
 
 __kernel void radial_blur(__read_only image2d_t input,
                               __write_only image2d_t output){
@@ -3373,3 +3468,388 @@ __kernel void opacity_filter(__read_only image2d_t input,
    write_imagef(output,coord,color);
    
 }
+
+__kernel void tan_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_TRUE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   
+   
+   float scale = 2.0f;
+   float2 new_coord =tan(coord * scale);
+   float4 color = read_imagef(input,sampler,new_coord);
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+float3 mod289_3(float3 x){
+    return x - floor(x * (1.0f / 289.0f)) * 289.0f;
+}
+
+float2 mod289_2(float2 x){
+    return x - floor(x * (1.0f / 289.0f)) * 289.0f;
+}
+
+float3 permute(float3 x){
+    return mod289_3(((x * 34.0f) + 1.0f) * x);
+}
+
+float snoise(float2 v){
+    const float4 C = (float4)(0.211324865405187f,  // (3.0-sqrt(3.0))/6.0
+                      0.366025403784439f,  // 0.5*(sqrt(3.0)-1.0)
+                     -0.577350269189626f,  // -1.0 + 2.0 * C.x
+                      0.024390243902439f); // 1.0 / 41.0;
+                      
+    
+    float2 i = floor(v + dot(v,C.yy));
+    float2 x0 = v - i + dot(i,C.xx);
+    
+    float2 i1 ;//= step(x0.y,x0.x);
+    
+    i1 = (x0.x > x0.y) ? (float2)(1.0f,0.0f) : (float2)(0.0f,1.0f);
+    
+    float4 x12 = x0.xyxy + C.xxzz;
+    
+    i = mod289_2(i);
+    
+    float3 p = permute(permute(i.y + (float3)(0.0f,i1.y,1.0f)) + i.x + (float3)(0.0f,i1.x,1.0f));
+    
+    float3 m = max(0.5f - (float3)(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),(float3)(0.0f,0.0f,0.0f));
+    
+    m = m * m;
+    m = m * m;
+    float3 iptr; //0x1.fffffep-1f;
+    float3 x = 2.0f * fract(p * C.www,&iptr) - 1.0f;
+    float3 h = fabs(x) - 0.5f;
+
+    float3 ox = floor(x + 0.5f);
+    float3 a0 = x - ox;
+    
+    m *= 1.79284291400159f - 0.85373472095314f * ( a0*a0 + h*h ); 
+    
+    float3 g;
+    g.x = a0.x * x0.x + h.x + x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    
+    return 130.0f * dot(m,g);
+}
+
+__kernel void cipher_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   float noise_scale = 2.0f;
+   float noise_offset = 3.0f;
+   float4 n = snoise(coord * noise_scale + noise_offset);
+   
+   write_imagef(output,convert_int2(coord),color * 0.5f + n * 0.25f + 0.25f);
+   
+}
+
+__kernel void decipher_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   float noise_scale = 2.0f;
+   float noise_offset = 3.0f;
+   float4 n = snoise(coord * noise_scale + noise_offset);
+   
+   write_imagef(output,convert_int2(coord),color * 2.0f - n * 0.5f + 0.5f);
+   
+}
+
+__kernel void warp_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+  
+  
+   float T = 2.0f;
+   
+   float2 xy = 2.0f * coord - 1.0f;
+   xy += T * sin(PI_F * xy);
+   
+   xy = (xy + 1.0f) / 2.0f;
+   
+    float4 color = read_imagef(input,sampler,xy);
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+__kernel void lens_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float CX = coord.x - dim.x / 2;
+   float CY = coord.y - dim.y / 2;
+   
+   float theta = 0.0f * PI_F / 180.0f;
+   
+   float dx = CX * cos(theta) - CY * sin(theta);
+   float dy = CX * sin(theta) + CY * cos(theta);
+   
+   float r = sqrt(dx * dx + dy * dy);
+   
+   float A = 0.0000000005f;
+   float B = 0.0000000005f;
+   float C = 0.0000000005f;
+   
+   float corr = 1.0f - A * r * r - B * r * r * r - C * r * r * r * r;
+   
+   float xu = dx * corr + dim.x / 2;
+   float yu = dy * corr + dim.y / 2;
+   
+   float4 color = read_imagef(input,sampler,(float2)(xu,yu));
+   
+  // if(length(color.xyz) < 0.6f){
+       //color.xyz = (0.0f,0.0f,0.0f);
+ //  }else{
+       //color.xyz = (1,1,1);
+ //  }
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+float2 barrel(float2 coord,float distortion,float2 dim){
+    float2 cc = coord - dim / 2;
+    float d = dot(cc,cc);
+    
+    return coord + cc * (d + distortion * d * d) * distortion;
+}
+
+__kernel void barrel_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   float2 texture_size = (float2)(dim.x,dim.y);
+   float distortion = 0.00005;
+   float2 xy = barrel(convert_float2(coord * texture_size / convert_float2(dim) * convert_float2(dim) / texture_size),distortion,convert_float2(dim));
+   
+   float4 color = read_imagef(input,sampler,xy);
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+__kernel void below_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 replace_color = (1.0f,1.0f,1.0f,1.0f);
+   float4 thresh = (0.4f,0.4f,0.4f);
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   if(color.x < thresh.x && color.y < thresh.y && color.z < thresh.z){
+       color = replace_color;
+   }
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+__kernel void below_ab_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float thresh_a = 0.5f;
+   float thresh_b = 0.5f;
+   
+   
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   
+   if(color.x > thresh_a){
+       float4 rgba = (clamp((color.x - thresh_a) / (1.0f - thresh_a),0.0f,1.0f),0.0f,0.0f,1.0f);
+       
+   }else{
+       if(color.x > thresh_b){
+           float4 rgba = (0.0f,clamp((color.y - thresh_b) / (1.0f - thresh_b),0.0f,1.0f),0.0f,1.0f);
+           write_imagef(output,convert_int2(coord),rgba);
+       }else{
+           float4 rgba = (0.0,0.0,color.y / thresh_b,1.0f);
+           write_imagef(output,convert_int2(coord),rgba);
+       }
+   }
+}
+/*
+float2 rand(float2 co){
+    float iptr = (0.0f,0.0f);
+    return fract(sin(dot(co.xy,(float2)(12.9898,78.233))) * 43758.5453,&iptr);
+}
+*/
+
+__kernel void worry_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   const float speed = 1.0f;
+   const float bendFactor = 0.2f;
+   const float timeAcceleration = 15.0f;
+   const float utime = 1000.0f;
+   const float waveRadius = 5.0f;
+   
+   float stepVal = (utime * timeAcceleration) + coord.x * 61.8f;
+   float offset = cos(stepVal) * waveRadius;
+   float2 iptr = (0.0f,0.0f);
+   
+   float4 color = read_imagef(input,sampler,(float2)(coord.x,coord.y + offset));
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void static_tv_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE |
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float t = 1.0f;
+   
+   float r = rand(coord - t * t);
+   float g = rand(coord - t * t * t);
+   float b = rand(coord - t * t * t * t);
+   
+   float mx = max(max(r,g),b);
+   
+   float4 rgba = mix(color,(float4)(mx,mx,mx,1.0f),0.35f);
+   
+   write_imagef(output,convert_int2(coord),rgba);
+}
+
+
+__kernel void bend_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   
+   
+   float height = (float)dim.y - coord.y;
+   float offset = pow(height,2.5f);
+   float u_time = 1.0f;
+   float speed = 2.0f;
+   float bendFactor = 0.2f;
+   offset *= (sin(u_time * speed) * bendFactor);
+   
+   float4 color = read_imagef(input,sampler,(float2)(coord.x,coord.y + offset));
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void sawtoothripple_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float xAmplitude = 5.0f;
+   float yAmplitude = 5.0f;
+   float xWavelength = 16.0f;
+   float yWavelength = 16.0f;
+   
+   float nx = coord.x / yWavelength;
+   float ny = coord.y / yWavelength;
+   
+   float fx = fmod(nx,1.0f);
+   float fy = fmod(ny,1.0f);
+   
+   float4 color = read_imagef(input,sampler,(float2)(coord.x + xAmplitude * fx,coord.y + yAmplitude * fy));
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void bump_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+  float color_matrix[9] = {-1.0f,-1.0f,0.0f,
+                           -1.0f,1.0f,1.0f,
+                           0.0f,1.0f,1.0f};
+  filter2d_internal(input,output,3,3,color_matrix,0);
+}
+

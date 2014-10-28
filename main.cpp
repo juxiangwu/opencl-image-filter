@@ -210,6 +210,7 @@ int main(int argc,char * argv[])
     cv::imshow("src",src);
     cv::imshow("dst",dst);
 
+//    cv::imwrite("images/output.png",dst);
 
     cv::waitKey();
 
