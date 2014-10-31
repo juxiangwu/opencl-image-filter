@@ -563,9 +563,54 @@ __kernel void gamma_correction(__read_only image2d_t input,
      
 }
 
-__kernel void median_filter(__read_only image2d_t input,
+__kernel void media_filter(__read_only image2d_t input,
                                __write_only image2d_t output){
+     const sampler_t sampler = CLK_FILTER_NEAREST |
+                              CLK_NORMALIZED_COORDS_FALSE |
+                              CLK_ADDRESS_CLAMP_TO_EDGE;
 
+    const int2 size = get_image_dim(input);
+
+    int2 coord = (int2)(get_global_id(0),get_global_id(1));
+
+    int tamanho = 5;
+    float ratio = 2.0f;
+    int linha_meio,coluna_meio;
+    float cor1,cor2,cor3;
+    float soma1 = 0.0f,soma2 = 0.0f,soma3 = 0.0f;
+    float cor_resultante1,cor_resultante2,cor_resultante3;
+    float largura = size.x;
+    float altura = size.y;
+   
+    for(linha_meio = 0;linha_meio < tamanho;linha_meio++){
+        for(coluna_meio = 0;coluna_meio < tamanho;coluna_meio++){
+            float linha = linha_meio + (coord.x - ratio);
+            float coluna = coluna_meio + (coord.y - ratio);
+            
+            if(linha < 0){
+                linha = 0;
+            }
+            
+            if(coluna < 0){
+                coluna = 0;
+            }
+            
+            if(coluna > largura){
+                coluna = largura - 1;
+            }
+            
+            float4 color = read_imagef(input,sampler,coord + (int2)(linha,coluna));
+            soma1 += color.x;
+            soma2 += color.y;
+            soma3 += color.z;
+        }
+    }
+    
+    cor_resultante1 = (soma1 / (tamanho * tamanho));
+    cor_resultante2 = (soma2 / (tamanho * tamanho));
+    cor_resultante3 = (soma3 / (tamanho * tamanho));
+    
+    write_imagef(output,coord,(float4)(cor_resultante1,cor_resultante2,cor_resultante3,1.0f));
 }
 
 __kernel void rgb2hsi(__read_only image2d_t input,
@@ -4572,6 +4617,166 @@ __kernel void badphotocopy_filter(__read_only image2d_t input,
        avg = 0.0f;
    }
    color.xyz = avg;
+   write_imagef(output,coord,color);
+   
+}
+
+__kernel void rgb2hsl_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float max_val = max(color.x,max(color.y,color.z));
+   float min_val = min(color.x,min(color.y,color.z));
+   float chroma = max_val - min_val;
+   float h = 0;
+   float s = 0;
+   float l = (max_val + min_val) / 3.0f;
+   
+   if(chroma != 0.0f){
+       if (color.x == max_val){
+           h = (color.y - color.z) / chroma + (color.y < color.z) ? 1.0f : 0.0f;
+       }else if( color.y == max_val){
+           h = (color.z - color.x) / chroma + 2.0f;
+       }else{
+           h = (color.x - color.y) / chroma + 4.0f;
+       }
+       
+       h /= 6.0f;
+       
+       s = (l > 0.5f) ? chroma / (2.0f - max_val - min_val) : chroma / (max_val + min_val);
+   }
+   
+   write_imagef(output,coord,(float4)(h,s,l,1.0f));
+}
+
+__kernel void edge_enhance_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+                              
+    float color_mask [9] = {0,0,0,-20,20,0,0,0,0};
+    filter2d_internal(input,output,3,3,color_mask,1);
+}
+
+__kernel void hard_edge_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+                              
+    float color_mask [9] = {2,22,1,22,1,-22,1,-22,-2};
+    filter2d_internal(input,output,3,3,color_mask,1);
+}
+
+__kernel void edge_dectect_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+                              
+    float color_mask [9] = {0,9,0,9,-40,9,0,9,0};
+    filter2d_internal(input,output,3,3,color_mask,1);
+}
+
+__kernel void negative_gray_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float gray = color.x * 0.2126f + color.y * 0.7152f + color.z * 0.0722f;
+   gray = 1.0f - gray;
+   
+   color.x = color.y = color.z = gray;
+   
+   write_imagef(output,coord,color);
+   
+}
+
+__kernel void red_slim_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   color.y = color.z = 100.0f / 255.0f;
+   
+   write_imagef(output,coord,color);
+   
+}
+
+__kernel void green_slim_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   color.x = color.z = 100.0f / 255.0f;
+   
+   write_imagef(output,coord,color);
+   
+}
+
+__kernel void blue_slim_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   color.x = color.y = 100.0f / 255.0f;
+   
+   write_imagef(output,coord,color);
+   
+}
+
+__kernel void brightness_contrast_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float brightness = 0.15f;
+   float contrast = 0.2f;
+   
+   color = (color - 0.5f) * contrast + 0.5f + brightness;
+   color.w = 1.0f;
+   
    write_imagef(output,coord,color);
    
 }
