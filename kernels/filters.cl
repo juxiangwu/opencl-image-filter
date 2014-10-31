@@ -1,4 +1,5 @@
 #define PI_F 3.14159265358979323846f
+#define LOG2_F 1.442695f
 
 void filter2d_internal(__read_only image2d_t input,
                        __write_only image2d_t output,
@@ -936,7 +937,7 @@ __kernel void bloom_filter(__read_only image2d_t input,
     float2 coord = (float2)(get_global_id(0),get_global_id(1));
     
     
-    float4 sum = (0.0f,0.0f,0.0f,0.0f);
+    float4 sum = (float4)(0.0f,0.0f,0.0f,0.0f);
     float a = 0.15f;
     float g = 0.15f;
     float e = 0.25f;
@@ -3687,8 +3688,8 @@ __kernel void below_filter(__read_only image2d_t input,
    
    float2 coord = (float2)(get_global_id(0),get_global_id(1));
    
-   float4 replace_color = (1.0f,1.0f,1.0f,1.0f);
-   float4 thresh = (0.4f,0.4f,0.4f);
+   float4 replace_color = (float4)(1.0f,1.0f,1.0f,1.0f);
+   float4 thresh = (float4)(0.4f,0.4f,0.4f,1.0f);
    
    float4 color = read_imagef(input,sampler,coord);
    
@@ -3720,14 +3721,14 @@ __kernel void below_ab_filter(__read_only image2d_t input,
    
    
    if(color.x > thresh_a){
-       float4 rgba = (clamp((color.x - thresh_a) / (1.0f - thresh_a),0.0f,1.0f),0.0f,0.0f,1.0f);
+       float4 rgba = (float4)(clamp((color.x - thresh_a) / (1.0f - thresh_a),0.0f,1.0f),0.0f,0.0f,1.0f);
        
    }else{
        if(color.x > thresh_b){
-           float4 rgba = (0.0f,clamp((color.y - thresh_b) / (1.0f - thresh_b),0.0f,1.0f),0.0f,1.0f);
+           float4 rgba = (float4)(0.0f,clamp((color.y - thresh_b) / (1.0f - thresh_b),0.0f,1.0f),0.0f,1.0f);
            write_imagef(output,convert_int2(coord),rgba);
        }else{
-           float4 rgba = (0.0,0.0,color.y / thresh_b,1.0f);
+           float4 rgba = (float4)(0.0,0.0,color.y / thresh_b,1.0f);
            write_imagef(output,convert_int2(coord),rgba);
        }
    }
@@ -3758,7 +3759,7 @@ __kernel void worry_filter(__read_only image2d_t input,
    
    float stepVal = (utime * timeAcceleration) + coord.x * 61.8f;
    float offset = cos(stepVal) * waveRadius;
-   float2 iptr = (0.0f,0.0f);
+   float2 iptr = (float2)(0.0f,0.0f);
    
    float4 color = read_imagef(input,sampler,(float2)(coord.x,coord.y + offset));
    
@@ -3853,3 +3854,724 @@ __kernel void bump_filter(__read_only image2d_t input,
   filter2d_internal(input,output,3,3,color_matrix,0);
 }
 
+
+__kernel void duotone_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   float l = luminance(color);
+   float e = 0.0f;
+   float3 highlight = (float3)(1.0f,0.0f,0.0f);
+   float3 shadow = (float3)(0.5f,0.5f,0.5f);
+   
+   float3 h = (highlight + e) / (luminance((float4)(highlight,1.0f)) + e) * l;
+   
+   float3 s = (shadow + e) / (luminance((float4)(shadow,1.0f)) + e) * l;
+   
+   float3 c = h * l + s * (1.0f - l);
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void vortex_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float2 uy;
+   float2 resolution = (float2)(0.035f,0.035f);
+   float2 p = -1.0f * convert_float2(dim) + 2.0f * coord /  resolution;
+   float time = 1.0f;
+   float a = atan2(p.y,p.x);
+   float r = sqrt(dot(p,p));
+   float s = r * (1.0f + 0.8f * cos ( time * 1.0f));
+   
+   uy.x = 0.02f * p.x + 0.03 * cos(-time + a * 3.0f) / s;
+   uy.y = 0.1f * time + 0.02 * p.y + 0.03 * sin(-time + a * 3.0f) / s;
+   
+   float w = 0.9f + pow(max(1.5f - r,0.0f),4.0f);
+   w *= 0.7f + 0.3f * cos(time + 3.0f * a);
+   
+   float4 color = read_imagef(input,sampler,uy);
+   color.xyz = w * color.xyz;
+   
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+float2 deform( float2 p,float2 center){
+    float2 uy;
+    float time = 1.0f;
+    float2 q = (float2)(sin(1.1 * time + p.x),sin(1.2 * time + p.y));
+    float a = atan2(q.y,q.x);
+    float r = sqrt(dot(q,q));
+    
+    uy.x = sin(0.0f + 1.0f * center.x) + p.x * sqrt(r * r + 1.0f);
+    uy.y = sin(0.6f + 1.1f * center.y) + p.y * sqrt(r * r + 1.0f);
+    
+    return uy * 0.5f;
+}
+
+__kernel void radial_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   float2 position = (float2)(0,0);
+   float2 resolution = (float2)(0.35f,0.35f);
+   float2 p = -1.0f * convert_float2(dim) + 2.0f * (position + coord) / resolution;
+   float2 s = p;
+   
+   float3 total = (float3)(0,0,0);
+   
+   float2 d = ((float2)(0.0f,0.0f) - p) / 40.0f;
+   
+   float w = 1.0f;
+   
+   for(int i = 0;i < 40;i++){
+       float2 uy = deform(s,coord);
+       float3 res = read_imagef(input,sampler,uy).xyz;
+       res = smoothstep(0.1f,0.1f,res * res);
+       total += w * res;
+       w *= 0.99f;
+       s += d;
+   }
+   
+   total /= 40.0f;
+  // float r = 1.5f / (1.0f + dot(p,p));
+   float3 vvColor = (float3)(0.5f,0.5f,0.5f);
+   float4 color = (float4)(total * vvColor,1.0f);
+   write_imagef(output,convert_int2(coord),color);
+   
+}
+
+__kernel void hq2x_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+ 
+   float2 texture_size = convert_float2(dim);
+   float4 tc1,tc2,tc3,tc4;
+   
+   float dx = texture_size.x / 2;//0.5f * (1.0f / texture_size.x);
+   float dy = texture_size.y / 2;//0.5f * (1.0f / texture_size.y);
+   
+   float2 dg1 = (float2)(dx,dy);
+   float2 dg2 = (float2)(-dx,dy);
+   float2 ddx = (float2)(dx,0.0f);
+   float2 ddy = (float2)(0.0f,dy);
+   
+   tc1 = (float4)(coord - dg1,coord - ddy);
+   tc2 = (float4)(coord - dg2,coord + ddx);
+   tc3 = (float4)(coord + dg1,coord + ddy);
+   tc4 = (float4)(coord + dg2,coord - ddx);
+   
+   const float mx = 0.325f;
+   const float k = -0.250f;
+   const float max_w = 0.25f;
+   const float min_w = -0.05f;
+   const float lum_add = 0.5f;
+   
+   float3 c00 = read_imagef(input,sampler,tc1.xy).xyz;
+   float3 c10 = read_imagef(input,sampler,tc1.zw).xyz;
+   float3 c20 = read_imagef(input,sampler,tc2.xy).xyz;
+   float3 c01 = read_imagef(input,sampler,tc4.zw).xyz;
+   float3 c11 = read_imagef(input,sampler,coord).xyz;
+   float3 c21 = read_imagef(input,sampler,tc2.zw).xyz;
+   float3 c02 = read_imagef(input,sampler,tc4.xy).xyz;
+   float3 c12 = read_imagef(input,sampler,tc3.zw).xyz;
+   float3 c22 = read_imagef(input,sampler,tc3.xy).xyz;
+   
+   float3 dt = (float3)(1.0f,1.0f,1.0f);
+   
+   float md1 = dot(fabs(c00 - c22),dt);
+   float md2 = dot(fabs(c02 - c20),dt);
+
+   float w1 = dot(fabs(c22 - c11),dt) * md2;
+   float w2 = dot(fabs(c02 - c11),dt) * md1;
+   float w3 = dot(fabs(c00 - c11),dt) * md2;
+   float w4 = dot(fabs(c20 - c11),dt) * md1;
+
+   float t1 = w1 + w2;
+   float t2 = w2 + w4;
+   
+   float ww = max(t1,t2) + 0.0001;
+   
+   c11 = (w1 * c00 + w2 * c20 + w3 * c22 + w4 * c02 + ww * c11) / (t1 + t2 + ww);
+   
+   float lc1 = k / (0.12f * dot(c10 + c12 + c11,dt) + lum_add);
+   float lc2 = k / (0.12f * dot(c01 + c21 + c11,dt) + lum_add);
+   
+   w1 = clamp(lc1 * dot(fabs(c11 - c10),dt) + mx,min_w,max_w);
+   w2 = clamp(lc2 * dot(fabs(c11 - c21),dt) + mx,min_w,max_w);
+   w3 = clamp(lc1 * dot(fabs(c11 - c12),dt) + mx,min_w,max_w);      
+   w4 = clamp(lc2 * dot(fabs(c11 - c01),dt) + mx,min_w,max_w);
+   
+   float3 final = w1 * c10 + w2 * c21 + w3 * c12 + w4 * c01 + (1.0f - w1 - w2 - w3 - w4) * c11;
+   
+   write_imagef(output,convert_int2(coord),(float4)(c11,1.0f));
+}
+
+float2 rand2(float2 coord){
+    float iptr;
+    float noiseX = (fract(sin(dot(coord,(float2)(12.9898f,78.233f))) * 43758.5453f,&iptr));
+    float noiseY = (fract(sin(dot(coord,(float2)(12.9898f,78.233f) * 2.0f)) * 43758.5433f,&iptr));
+    
+    return (float2)(noiseX,noiseY) * 0.004f;
+}
+
+float compare_depths(float depth1,float depth2,float near,float far){
+    float depthTolerance = far / 5.0f;
+    float occlusionTolerance = far / 100.0f;
+    float diff = (depth1 - depth2);
+    
+    if(diff <= 0.0f){
+        return 0.0f;
+    }
+    if(diff > depthTolerance){
+        return 0.0f;
+    }
+    
+    if(diff < occlusionTolerance){
+        return 0.0f;
+    }
+    
+    return 1.0f;
+}
+
+float read_depth(float2 coord, float color_red,float near,float far){
+    float z_b = color_red;
+    float z_n = 2.0f * z_b - 1.0f;
+    float z_e = 2.0f * near * far / (far + near - z_n * (far - near));
+    
+    return z_e;
+}
+
+
+__kernel void ssao_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float near =  0.20f;
+   float far = 1.0f;
+   float2 text_coord = (float2)(coord.x / (float)dim.x,coord.y / (float)dim.y);
+   float depth = read_depth(text_coord,color.x,near,far);
+   
+   float aspect = (float)dim.x / (float)dim.y;
+   
+   float2 noise = rand2(coord);
+   float z_b = color.x;//(color.x + color.y + color.z) / 3.0f;
+   
+   float w = (1.0f / dim.x) / clamp(z_b,0.1f,1.0f) + (noise.x * (1.0f - noise.x));
+   float h = (1.0f / dim.y) / clamp(z_b,0.1f,1.0f) + (noise.y * (1.0f - noise.y));
+   
+   float pw,ph;
+   
+   float ao = 0.0f;
+   float s = 0.0f;
+   
+   float fade = 4.0f;
+   int rings = 5;
+   int samples = 3;
+   float strength = 2.0f;
+   float offset = 0.0f;
+   float d;
+   for(int i = 0;i < rings;i++){
+       fade *= 0.5f;
+       for(int j = 0;j < samples * rings;j++){
+           if(j >= samples * i) break;
+           float step = PI_F * 2.0f / ((float)samples * (float)(i));
+           float r = 4.0f * i;
+           pw = r * cos((float)j * step);
+           ph = r * sin((float)j * step);
+           color = read_imagef(input,sampler,(float2)(coord.x + pw * w,coord.y + ph * h));
+           z_b = color.x;
+           d = read_depth((float2)(coord.x + pw * w,coord.y + ph * h),z_b,near,far);
+           
+           ao += compare_depths(depth,d,near,far) * fade;
+           
+           s += 1.0f * fade;
+       }
+   }
+   
+   ao /= s;
+   ao = clamp(ao,0.0f,1.0f);
+   ao = 1.0f - ao;
+   ao = offset + (1.0f - offset) * ao;
+   ao = pow(ao,strength);
+   
+   write_imagef(output,convert_int2(coord),(float4)(ao,ao,ao,1.0f));
+}
+
+__kernel void exposure_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float exposure = 0.25f;
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   color *= exposure;
+   color = color / (1.0f + color);
+   color.w = 1.0f;
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+#define FXAA_REDUCE_MIN (1.0f / 128.0f)
+#define FXAA_REDUCE_MUL (1.0f / 8.0f)
+#define FXAA_SPAN_MAX 8.0f
+
+__kernel void fxaa_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float2 posPos = (float2)(dim.x / 2,dim.y / 2);
+   float rtWidth = 0.05f;
+   float rtHeight = 0.05f;
+   
+   float2 coord_src = (float2)(coord.x,coord.y);
+   
+   coord = coord * (float2)(rtWidth,rtHeight);
+   
+   float4 color = read_imagef(input,sampler,coord);
+   float2 inverseVP = (float2)(1.0f / rtWidth,1.0f / rtHeight);
+   
+   float3 rgbNW = read_imagef(input,sampler,(coord + (float2)(-1.0f,-1.0f)) * inverseVP).xyz;
+   float3 rgbNE = read_imagef(input,sampler,(coord + (float2)(1.0f,-1.0f)) * inverseVP).xyz;
+   float3 rgbSW = read_imagef(input,sampler,(coord + (float2)(-1.0f,1.0f)) * inverseVP).xyz;
+   float3 rgbSE = read_imagef(input,sampler,(coord + (float2)(-1.0f,1.0f)) * inverseVP).xyz;
+   float3 rgbM = read_imagef(input,sampler,coord * inverseVP).xyz;
+   
+   float3 luma = (float3)(0.299f,0.587f,0.114f);
+   float lumaNW = dot(rgbNW,luma);
+   float lumaNE = dot(rgbNE,luma);
+   float lumaSW = dot(rgbSW,luma);
+   float lumaSE = dot(rgbSE,luma);
+   float lumaM = dot(rgbM,luma);
+   
+   float lumaMin = min(lumaM,min(min(lumaNW,lumaNE),min(lumaSW,lumaSE)));
+   float lumaMax = max(lumaM,max(max(lumaNW,lumaNE),min(lumaSW,lumaSE)));
+   
+   float2 dir;
+   dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+   dir.y = ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+   
+   float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * (0.25f * FXAA_REDUCE_MUL),FXAA_REDUCE_MIN);
+   float rcpDirMin = 1.0f / (min(fabs(dir.x),fabs(dir.y)) + dirReduce);
+   float FXAA_SUBPIX_SHIFT = 1.0f / 4.0f;
+   dir = min((float2)(FXAA_SPAN_MAX,FXAA_SPAN_MAX),max((float2)(-FXAA_SPAN_MAX,-FXAA_SPAN_MAX),dir * rcpDirMin)) * inverseVP;
+   
+   float3 color1 = read_imagef(input,sampler,coord * inverseVP + dir * (1.0f / 3.0f - 0.5f)).xyz;
+   float3 color2 = read_imagef(input,sampler,coord * inverseVP + dir * (2.0f / 3.0f - 0.5f)).xyz;
+   
+   float3 rgbA = 0.5f * (color1 + color2);
+   
+   float3 color3 = read_imagef(input,sampler,coord * inverseVP + dir * -0.5f).xyz;
+   float3 color4 = read_imagef(input,sampler,coord * inverseVP + dir * 0.5f).xyz;
+   
+   float3 rgbB  = rgbA * 0.5f + 0.25f * (color3 + color4);
+   
+   float lumaB = dot(rgbB,luma);
+   
+   if(lumaB < lumaMin || lumaB > lumaMax){
+       color = (float4)(rgbA,1.0f);
+   }else{
+       color = (float4)(rgbB,2.0f);
+   }
+   
+   write_imagef(output,convert_int2(coord_src),color);
+}
+
+__kernel void mosaic2_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   
+   float t = 1.2f;
+   float2 position = (float2)(coord.x / dim.x,1.0f - coord.y / dim.y);
+   float2 samplePos = position.xy;
+   float pixel = 64.0f;
+   float edges = 0.02f;
+   float depth = 8.0f;
+   float shift = 5.0f;
+   
+   samplePos.x = floor(samplePos.x * (dim.x / pixel)) / (dim.x / pixel);
+   samplePos.y = floor(samplePos.y * (dim.y / pixel)) / (dim.y / pixel);
+   
+   float st = sin(t * 0.05f);
+   float ct = cos(t * 0.05f);
+   
+   float h = st * shift / dim.x;
+   float v = ct * shift / dim.y;
+   
+   float3 o = read_imagef(input,sampler,samplePos).xyz;
+   float r = read_imagef(input,sampler,samplePos +  (float2)(+h,+v)).x;
+   float g = read_imagef(input,sampler,samplePos +  (float2)(-h,-v)).y;
+   float b = read_imagef(input,sampler,samplePos).z;
+   float iptr;
+   r = mix(o.x,r,fract(fabs(st),&iptr));
+   g = mix(o.y,g,fract(fabs(ct),&iptr));
+   
+   float n = fmod(coord.x,pixel) * edges;
+   float m = fmod(dim.y - coord.y,pixel) * edges;
+   
+   float3 c = (float3)(r,g,b);
+   
+   c = floor(c * depth) / depth;
+   c = c * (1.0f - (m + n) * (n + m));
+   write_imagef(output,convert_int2(coord),(float4)(c,1.0f));
+
+}
+
+__kernel void geomean_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   color.x = color.y = color.z = pow(color.x * color.y * color.z,1.0f / 3.0f);
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void middle_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float max_val = max(color.x,max(color.y,color.z));
+   float min_val = min(color.x,min(color.y,color.z));
+   
+   color.x = color.y = color.z = (max_val + min_val) / 2.0f;
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+__kernel void hdtv_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   float4 color = read_imagef(input,sampler,coord);
+   float x = 4.0f;
+   float r = pow(color.x,x) * 44403.0f / 200000.0f;
+   float g = pow(color.y,x) * 141331.0f / 200000.0f;
+   float b = pow(color.z,x) * 7133 / 100000.0f;
+   
+   float y = pow(r + g + b,1.0f / x);
+   
+   color.x = color.y = color.z = y;
+   
+   write_imagef(output,convert_int2(coord),color);
+}
+
+float radius_length(float x1,float x2){
+    return sqrt(x1 * x1 + x2 * x2);
+}
+
+__kernel void fish_eye_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   //float4 color = read_imagef(input,sampler,coord);
+   
+   float x1 = 2.0f * coord.x / dim.x - 1.0f;
+   float y1 = 2.0f * coord.y / dim.y - 1.0f;
+   
+   float radius = sqrt(x1 * x1 + y1 * y1);
+   float phase = atan2(y1,x1);
+   
+   float param = 1.5f;
+   
+   radius = pow(radius,param) / sqrt(2.0f);
+   
+   
+   float newX = radius * cos(phase);
+   float newY = radius * sin(phase);
+   
+   float centerX = (newX + 1.0f) / 2.0f * dim.x;
+   float centerY = (newY + 1.0f) / 2.0f * dim.y;
+   
+   float baseX = floor(centerX);
+   float baseY = floor(centerY);
+   
+   float ratioR = centerX - baseX;
+   float ratioL = 1.0f - ratioR;
+   float ratioB = centerY - baseY;
+   float ratioT = 1.0f - ratioB;
+   
+   if(baseX >= 0 && baseY >= 0 && baseX < dim.x && baseY < dim.y){
+       float pstl = (baseX + baseY * dim.x) * 4;
+       float pstr = pstl + 4;
+       float psbl = pstl + dim.x * 4;
+       float psbr = psbl + 4;
+       
+       float4 rgba1 = read_imagef(input,sampler,(float2)(baseX,baseY));
+       float4 rgba2 = read_imagef(input,sampler,(float2)(baseX + 1,baseY + 1));
+       float4 rgba3 = read_imagef(input,sampler,(float2)(baseX + 2,baseY + 2));
+       float4 rgba4 = read_imagef(input,sampler,(float2)(baseX + 3,baseY + 3));
+       
+       float4 tc = rgba1 * ratioL + rgba2 * ratioR;
+       float4 bc = rgba3 * ratioL + rgba3 * ratioR;
+       
+       float4 rgba = tc * ratioT + bc * ratioB;
+       rgba.w = 1.0f;
+       write_imagef(output,convert_int2(coord),rgba);
+   }else{
+       write_imagef(output,convert_int2(coord),(float4)(0.0f,0.0f,0.0f,1.0f));
+   }
+}
+
+__kernel void shrink_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   //float4 color = read_imagef(input,sampler,coord);
+   
+   float x1 = 2.0f * coord.x / dim.x - 1.0f;
+   float y1 = 2.0f * coord.y / dim.y - 1.0f;
+   
+   float radius = sqrt(x1 * x1 + y1 * y1);
+   float phase = atan2(y1,x1);
+   
+   float param1 = 1.8f;
+   float param2 = 0.8f;
+   
+   radius = pow(radius,1.0f / param1) * param2;
+   
+   
+   float newX = radius * cos(phase);
+   float newY = radius * sin(phase);
+   
+   float centerX = (newX + 1.0f) / 2.0f * dim.x;
+   float centerY = (newY + 1.0f) / 2.0f * dim.y;
+   
+   float baseX = floor(centerX);
+   float baseY = floor(centerY);
+   
+   float ratioR = centerX - baseX;
+   float ratioL = 1.0f - ratioR;
+   float ratioB = centerY - baseY;
+   float ratioT = 1.0f - ratioB;
+   
+   if(baseX >= 0 && baseY >= 0 && baseX < dim.x && baseY < dim.y){
+       float pstl = (baseX + baseY * dim.x) * 4;
+       float pstr = pstl + 4;
+       float psbl = pstl + dim.x * 4;
+       float psbr = psbl + 4;
+       
+       float4 rgba1 = read_imagef(input,sampler,(float2)(baseX,baseY));
+       float4 rgba2 = read_imagef(input,sampler,(float2)(baseX + 1,baseY + 1));
+       float4 rgba3 = read_imagef(input,sampler,(float2)(baseX + 2,baseY + 2));
+       float4 rgba4 = read_imagef(input,sampler,(float2)(baseX + 3,baseY + 3));
+       
+       float4 tc = rgba1 * ratioL + rgba2 * ratioR;
+       float4 bc = rgba3 * ratioL + rgba3 * ratioR;
+       
+       float4 rgba = tc * ratioT + bc * ratioB;
+       rgba.w = 1.0f;
+       write_imagef(output,convert_int2(coord),rgba);
+   }else{
+       write_imagef(output,convert_int2(coord),(float4)(0.0f,0.0f,0.0f,1.0f));
+   }
+}
+
+__kernel void swirl2_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   //float4 color = read_imagef(input,sampler,coord);
+   
+   float x1 = 2.0f * coord.x / dim.x - 1.0f;
+   float y1 = 2.0f * coord.y / dim.y - 1.0f;
+   
+   float radius = sqrt(x1 * x1 + y1 * y1);
+   float phase = atan2(y1,x1);
+   
+   float param1 = 0.5f;
+   float param2 = 4.0f;
+   
+   phase = phase + (1.0f - smoothstep(radius,-param1,param1)) * param2;
+   
+   
+   float newX = radius * cos(phase);
+   float newY = radius * sin(phase);
+   
+   float centerX = (newX + 1.0f) / 2.0f * dim.x;
+   float centerY = (newY + 1.0f) / 2.0f * dim.y;
+   
+   float baseX = floor(centerX);
+   float baseY = floor(centerY);
+   
+   float ratioR = centerX - baseX;
+   float ratioL = 1.0f - ratioR;
+   float ratioB = centerY - baseY;
+   float ratioT = 1.0f - ratioB;
+   
+   if(baseX >= 0 && baseY >= 0 && baseX < dim.x && baseY < dim.y){
+       float pstl = (baseX + baseY * dim.x) * 4;
+       float pstr = pstl + 4;
+       float psbl = pstl + dim.x * 4;
+       float psbr = psbl + 4;
+       
+       float4 rgba1 = read_imagef(input,sampler,(float2)(baseX,baseY));
+       float4 rgba2 = read_imagef(input,sampler,(float2)(baseX + 1,baseY + 1));
+       float4 rgba3 = read_imagef(input,sampler,(float2)(baseX + 2,baseY + 2));
+       float4 rgba4 = read_imagef(input,sampler,(float2)(baseX + 3,baseY + 3));
+       
+       float4 tc = rgba1 * ratioL + rgba2 * ratioR;
+       float4 bc = rgba3 * ratioL + rgba3 * ratioR;
+       
+       float4 rgba = tc * ratioT + bc * ratioB;
+       rgba.w = 1.0f;
+       write_imagef(output,convert_int2(coord),rgba);
+   }else{
+       write_imagef(output,convert_int2(coord),(float4)(0.0f,0.0f,0.0f,1.0f));
+   }
+}
+
+__kernel void backto1980_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float avg = length(color.xyz) / 3.0f;
+   float levels = 2.0f;
+   avg = floor(avg * levels * 3.0f) / levels;
+   
+   color.x = avg;
+   color.y = avg;
+   color.z = avg;
+   color.w = 1.0f;
+   
+   write_imagef(output,coord,color);
+   
+}
+
+__kernel void badphotocopy_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   int2 coord = (int2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float noise = rand(color.xy) / 2.0f;
+   
+   float avg = (length(color.xyz) / 3.0f) * 0.75f + noise * 0.25f;
+   
+   if(avg > 0.25f){
+       avg = 1.0f;
+   }else{
+       avg = 0.0f;
+   }
+   color.xyz = avg;
+   write_imagef(output,coord,color);
+   
+}
