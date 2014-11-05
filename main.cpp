@@ -16,7 +16,7 @@ int main(int argc,char * argv[])
     }
     const char * imageFile = argv[1];
 //    const char * imageFile2 = argv[2];
-
+    std::cout << "kernel file = " << argv[2] << std::endl;
     const char * kernelFile = argv[2];//"kernels/filters.cl";
     cv::Mat src = cv::imread(imageFile);
 //    cv::Mat src2 = cv::imread(imageFile2);
@@ -150,6 +150,7 @@ int main(int argc,char * argv[])
      }
 
     //cl_kernel kernel = clCreateKernel(program,"sepia_filter2",&status);
+     std::cout << "kernel = " << argv[3] << std::endl;
     cl_kernel kernel = clCreateKernel(program,argv[3],&status);
 
     if(status != CL_SUCCESS){
