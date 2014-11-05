@@ -6,6 +6,7 @@ void filter2d_internal(__read_only image2d_t input,
                        const int maskWidth,
                        const int maskHeight,
                         float * mask,int compute_aver);
+void color_matrix_4x5_internal(__read_only image2d_t input,__write_only image2d_t output,float * mask);
 
 __kernel void gray(__read_only image2d_t input, __write_only image2d_t output){
 
@@ -1841,47 +1842,50 @@ void filter2d_internal(__read_only image2d_t input,
 __kernel void desaturate_luminance_filter(__read_only image2d_t input,
                               __write_only image2d_t output){
     
-    float color_matrix[25] = {
+    float color_matrix[] = {
         0.2764723f, 0.9297080f, 0.0938197f, 0, -37.1f,
 	    0.2764723f, 0.9297080f, 0.0938197f, 0, -37.1f,
 		0.2764723f, 0.9297080f, 0.0938197f, 0, -37.1f,
 		0.0f, 0.0f, 0.0f, 1.0f, 0.0f
     }; 
-    int maskWidth = 5;
-    int maskHeight = 5;
+ //   int maskWidth = 5;
+//    int maskHeight = 5;
     
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);
+   // filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);
+   color_matrix_4x5_internal(input,output,color_matrix);
 }
 
 __kernel void brownie_filter(__read_only image2d_t input,
                               __write_only image2d_t output){
     
-    float color_matrix[20] = {
+    float color_matrix[] = {
         0.5997023498159715f,0.34553243048391263f,-0.2708298674538042f,0,47.43192855600873f,
 	   -0.037703249837783157f,0.8609577587992641f,0.15059552388459913f,0,-36.96841498319127f,
 		0.24113635128153335f,-0.07441037908422492f,0.44972182064877153f,0,-7.562075277591283f,
-	
+	   0.0f,0.0f,0.0f,1.0f,0.0f
+
     }; 
-    int maskWidth = 4;
-    int maskHeight = 4;
+//    int maskWidth = 4;
+//    int maskHeight = 4;
     
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//ok
+//    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//ok
     //filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//ok
+     color_matrix_4x5_internal(input,output,color_matrix);
 }
 
 __kernel void sepia2_filter(__read_only image2d_t input,
                               __write_only image2d_t output){
     
-    float color_matrix[9] = {
-       0.393f, 0.7689999f, 0.18899999f,
-	   0.349f, 0.6859999f, 0.16799999f,
-	   0.272f, 0.5339999f, 0.13099999f
-	  
+    float color_matrix[] = {
+       0.393f, 0.7689999f, 0.18899999f,0.0f,0.0f,
+	   0.349f, 0.6859999f, 0.16799999f,0.0f,0.0f,
+	   0.272f, 0.5339999f, 0.13099999f,0.0f,0.0f,
+	   0.0f,0.0f,0.0f,1.0f,0.0f
     }; 
-    int maskWidth = 3;
-    int maskHeight = 3;
-    
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);//ok
+    //int maskWidth = 3;
+    //int maskHeight = 3;
+    color_matrix_4x5_internal(input,output,color_matrix);
+   // filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);//ok
 }
 
 __kernel void hue_filter(__read_only image2d_t input,
@@ -1895,16 +1899,18 @@ __kernel void hue_filter(__read_only image2d_t input,
     
     
     
-    float color_matrix[9] = {
-       lumR+cos(rotation)*(1-lumR)+sin(rotation)*(-lumR),lumG+cos(rotation)*(-lumG)+sin(rotation)*(-lumG),lumB+cos(rotation)*(-lumB)+sin(rotation)*(1-lumB),
-	   lumR+cos(rotation)*(-lumR)+sin(rotation)*(0.143f),lumG+cos(rotation)*(1-lumG)+sin(rotation)*(0.140f),lumB+cos(rotation)*(-lumB)+sin(rotation)*(-0.283f),
-	   lumR+cos(rotation)*(-lumR)+sin(rotation)*(-(1-lumR)),lumG+cos(rotation)*(-lumG)+sin(rotation)*(lumG),lumB+cos(rotation)*(1-lumB)+sin(rotation)*(lumB),
+    float color_matrix[] = {
+       lumR+cos(rotation)*(1-lumR)+sin(rotation)*(-lumR),lumG+cos(rotation)*(-lumG)+sin(rotation)*(-lumG),lumB+cos(rotation)*(-lumB)+sin(rotation)*(1-lumB),0.0f,0.0f,
+	   lumR+cos(rotation)*(-lumR)+sin(rotation)*(0.143f),lumG+cos(rotation)*(1-lumG)+sin(rotation)*(0.140f),lumB+cos(rotation)*(-lumB)+sin(rotation)*(-0.283f),0.0f,0.0f,
+	   lumR+cos(rotation)*(-lumR)+sin(rotation)*(-(1-lumR)),lumG+cos(rotation)*(-lumG)+sin(rotation)*(lumG),lumB+cos(rotation)*(1-lumB)+sin(rotation)*(lumB),0.0f,0.0f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
 	  
     }; 
-    int maskWidth = 3;
-    int maskHeight = 3;
+    //int maskWidth = 3;
+    //int maskHeight = 3;
     
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);//ok
+    //filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);//ok
+     color_matrix_4x5_internal(input,output,color_matrix);
 }
 
 __kernel void hue2_filter(__read_only image2d_t input,
@@ -1953,16 +1959,18 @@ __kernel void hue2_filter(__read_only image2d_t input,
 __kernel void vintage_pinhole_filter(__read_only image2d_t input,
                               __write_only image2d_t output){
     
-    float color_matrix[15] = {
-            0.6279345635605994f,0.3202183420819367f,-0.03965408211312453f,0,9.3651285835294123f,
-			0.02578397704808868f,0.6441188644374771f,0.03259127616149294f,0,7.462829176470591f,
-			0.0466055556782719f,-0.0851232987247891f,0.5241648018700465f,0,5.159190588235296f,
-			
+    float color_matrix[] = {
+            0.6279345635605994f,0.3202183420819367f,-0.03965408211312453f,0.0f,9.3651285835294123f,
+			0.02578397704808868f,0.6441188644374771f,0.03259127616149294f,0.0f,7.462829176470591f,
+			0.0466055556782719f,-0.0851232987247891f,0.5241648018700465f,0.0f,5.159190588235296f,
+			0.0f,0.0f,0.0f,1.0f,0.0f
     }; 
-    int maskWidth = 5;
-    int maskHeight = 3;
+    //int maskWidth = 5;
+    //int maskHeight = 3;
     
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//ok
+    //filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//ok
+         color_matrix_4x5_internal(input,output,color_matrix);
+
 }
 
 __kernel void techni_color_filter(__read_only image2d_t input,
@@ -1974,10 +1982,11 @@ __kernel void techni_color_filter(__read_only image2d_t input,
 			-0.231103377548616f,-0.7501899197440212f,1.847597816108189f,0,30.950940869491138f,
 			0,0,0,1,0
     }; 
-    int maskWidth = 5;
-    int maskHeight = 4;
+    //int maskWidth = 5;
+    //int maskHeight = 4;
     
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//ok,0 also ok
+   // filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//ok,0 also ok
+    color_matrix_4x5_internal(input,output,color_matrix);
 }
 
 __kernel void kodachrome_filter(__read_only image2d_t input,
@@ -1989,10 +1998,11 @@ __kernel void kodachrome_filter(__read_only image2d_t input,
 			-0.16786010706155763f,-0.5603416277695248f,1.6014850761964943f,0,35.62982807460946f,
 			0,0,0,1,0
     }; 
-    int maskWidth = 5;
-    int maskHeight = 4;
+   // int maskWidth = 5;
+    //int maskHeight = 4;
     
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//both
+   // filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,1);//both
+   color_matrix_4x5_internal(input,output,color_matrix);
 }
 
 __kernel void polariod_filter(__read_only image2d_t input,
@@ -2004,10 +2014,11 @@ __kernel void polariod_filter(__read_only image2d_t input,
 			-0.016f,-0.016f,1.483f,0,0,
 			0,0,0,1,0
     }; 
-    int maskWidth = 5;
-    int maskHeight = 4;
+   // int maskWidth = 5;
+    //int maskHeight = 4;
     
-    filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);//ok
+    //filter2d_internal(input,output,maskWidth,maskHeight,color_matrix,0);//ok
+    color_matrix_4x5_internal(input,output,color_matrix);
 }
 
 __kernel void prewitt_horizonta_filter(__read_only image2d_t input,
@@ -3487,6 +3498,8 @@ __kernel void bias_clip_filter(__read_only image2d_t input,
    
    write_imagef(output,convert_int2(coord),color);
 }
+
+
 
 __kernel void duo_tone_filter(__read_only image2d_t input,
                               __write_only image2d_t output){
@@ -5861,4 +5874,384 @@ __kernel void grain_filter(__read_only image2d_t input,
    col = col + noise * grain_amount;
    
    write_imagef(output,convert_int2(coord),(float4)(col,1.0f));
+}
+
+float lerp(float t,float a,float b){
+    return a + t * ( b - a);
+}
+
+float float_mod(float a,float b){
+    int n = (int)a / (int)b;
+    
+    float aa = a - (float)n * b;
+    if(aa < 0){
+        return a + b;
+    }else{
+        return aa;
+    }
+}
+
+__kernel void flare_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+   
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float rays = 50.0f;
+   float radius = 50.0f;
+   float baseAmount = 1.0f;
+   float ringAmount = 0.2f;
+   float rayAmount = 0.1f;
+   
+   float centerX = 0.5f,centerY = 0.5f;
+   float ringWidth = 1.6f;
+   
+   float linear = 0.03f;
+   float gauss = 0.006f;
+   float mix_val = 0.50f;
+   float falloff = 6.0f;
+   float sigma = radius / 3.0f;
+   
+   float iCenterX = centerX * dim.x;
+   float iCenterY = centerY * dim.y;
+   
+   float dx = coord.x - iCenterX;
+   float dy = coord.y - iCenterY;
+   
+   float dist = sqrt(dx * dx + dy * dy);
+   float a = exp(-dist * dist * gauss) * mix_val + exp(-dist * linear) * (1 - mix_val);
+   
+   float ring;
+   
+   a *= baseAmount;
+   
+   if(dist > radius + ringWidth){
+       a = lerp((dist - (radius + ringWidth)) / falloff,a,0);
+   }
+   
+   if(dist < radius - ringWidth || dist > radius + ringWidth){
+       ring = 0;
+   }else{
+       ring = fabs(dist - radius) / ringWidth;
+       ring = 1.0f - ring * ring * (3.0f - 2.0f * ring);
+       ring *= ringAmount;
+   }
+   
+   a += ring;
+   
+   float angle = atan2(dx,dy) + PI_F;
+   
+   angle = (float_mod(angle / PI_F * 17.0f + 1.0f + rand(coord.x * angle),1.0f) - 0.5f) * 2.0f;
+   angle = fabs(angle);
+   angle = pow(angle,5.0f);
+   
+   float b = rayAmount * angle / (1.0f + dist * 0.1f);
+   a += b;
+   
+   a = clamp(a,0.0f,1.0f);
+   
+   float4 mask_color = (float4)(1.0f,0.5f,0.5f,1.0f);
+   float4 color = read_imagef(input,sampler,coord);
+   float4 rgba;
+   rgba.x = lerp(a,color.x,mask_color.x);
+   rgba.y = lerp(a,color.y,mask_color.y);
+   rgba.z = lerp(a,color.z,mask_color.z);
+   rgba.w = 1.0f;
+   write_imagef(output,convert_int2(coord),rgba);
+}
+
+void color_matrix_4x5_internal(__read_only image2d_t input,__write_only image2d_t output,float * mask){
+    const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord) * 255.0f;
+   
+   float4 rgba;
+   rgba.x = mask[0] * color.x + mask[1] * color.y + mask[2] * color.z + mask[3] * color.w + mask[4];
+   rgba.y = mask[0 + 5] * color.x + mask[1 + 5] * color.y + mask[2 + 5] * color.z + mask[3 + 5] * color.w + mask[4 + 5];
+   rgba.z = mask[0 + 5 * 2] * color.x + mask[1 + 5 * 2] * color.y + mask[2 + 5 * 2] * color.z + mask[3 + 5 * 2] * color.w + mask[4 + 5 * 2];
+   rgba.w = mask[0 + 5 * 3] * color.x + mask[1 + 5 * 3] * color.y + mask[2 + 5 * 3] * color.z + mask[4 + 5 * 3] * color.w + mask[4 + 5 * 3];
+   
+   if(rgba.x < 0.0f){
+       rgba.x = 0.0f;
+   }
+   
+   if(rgba.x > 255.0f){
+       rgba.x = 255.0f;
+   }
+   
+    if(rgba.y < 0.0f){
+       rgba.y = 0.0f;
+   }
+   
+   if(rgba.y > 255.0f){
+       rgba.y = 255.0f;
+   }
+   
+    if(rgba.z < 0.0f){
+       rgba.z = 0.0f;
+   }
+   
+   if(rgba.z > 255.0f){
+       rgba.z = 255.0f;
+   }
+   
+    if(rgba.w < 0.0f){
+       rgba.w = 0.0f;
+   }
+   
+   if(rgba.w > 255.0f){
+       rgba.w = 255.0f;
+   }
+   
+   rgba /= 255.0f;
+   
+   write_imagef(output,convert_int2(coord),rgba);
+}
+
+__kernel void lomo_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+      1.7f,0.1f,0.1f,0.0f,-73.1f,
+      0.0f,1.7f,0.1f,0.0f,-73.1f,
+      0.0f,0.1f,1.6f,0.0f,-73.1f,
+      0.0f,0.0f,0.0f,1.0f,0.0f  
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/*黑白
+*/
+__kernel void black_white_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+      0.8f,1.6f,0.2f,0.0f,-163.9f,
+      0.8f,1.6f,0.2f,0.0f,-163.9f,
+      0.8f,1.6f,0.2f,0.0f,163.9f,
+      0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+
+__kernel void old_memery_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+      0.2f,0.5f,0.1f,0.0f,40.8f,
+      0.2f,0.5f,0.1f,0.0f,40.8f,
+      0.2f,0.5f,0.1f,0.0f,40.8f,
+      0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/*
+*哥特
+*/
+__kernel void gete_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+       1.9f,-0.3f,-0.2f,0.0f,-87.0f,
+       -0.2f,1.7f,-0.1f,0.0f,-87.0f,
+       -0.1f,-0.6f,2.0f,0.0f,-87.0f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/*
+*锐化
+*/
+__kernel void ruise_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+       4.8f,-1.0f,-0.1f,0.0f,-388.4f,
+       -0.5f,4.4f,-0.1f,0.0f,-388.4f,
+       -0.5f,-1.0f,5.2f,0.0f,-388.4f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/*
+*淡雅
+*/
+__kernel void danya_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+       0.6f,0.3f,0.1f,0.0f,73.3f,
+       0.2f,0.7f,0.1f,0.0f,73.3f,
+       0.2f,0.3f,0.4f,0.0f,73.3f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/**清宁
+*/
+__kernel void qingning_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+       0.9f,0.0f,0.0f,0.0f,0.0f,
+       0.0f,1.1f,0.0f,0.0f,0.0f,
+       0.0f,0.0f,0.9f,0.0f,0.0f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/**浪漫
+*/
+__kernel void langman_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+       0.9f,0.0f,0.0f,0.0f,63.0f,
+       0.0f,0.9f,0.0f,0.0f,63.0f,
+       0.0f,0.0f,0.9f,0.0f,63.0f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/**光晕
+*/
+__kernel void guangyun_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+       0.9f,0.0f,0.0f,0.0f,64.9f,
+       0.0f,0.9f,0.0f,0.0f,64.9f,
+       0.0f,0.0f,0.9f,0.0f,64.9f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/**蓝调
+*/
+__kernel void landiao_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+       2.1f,-1.4f,0.6f,0.0f,-31.0f,
+       -0.3f,2.0f,-0.3f,0.0f,-31.0f,
+       -1.1f,-0.2f,2.6f,0.0f,-31.0f,
+       0.0f,0.0f,0.0f,1.0f,0.0f
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/**梦幻
+*/
+__kernel void menghuan_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+      0.8f,0.3f,0.1f,0.0f,46.5f,
+      0.1f,0.9f,0.0f,0.0f,46.5f,
+      0.1f,0.3f,0.7f,0.0f,46.5f,
+      0.0f,0.0f,0.0f,1.0f,0.0f,
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+/**夜色
+*/
+__kernel void yese_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+    float color_matrix [] = {
+      1.0f,0.0f,0.0f,0.0f,-66.6f,
+      0.0f,1.1f,0.0f,0.0f,-66.6f,
+      0.0f,0.0f,1.0f,0.0f,-66.6f,
+      0.0f,0.0f,0.0f,1.0f,0.0f,
+    };
+    
+    color_matrix_4x5_internal(input,output,color_matrix);              
+}
+
+__kernel void shi_tomasi_feather_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+                                  
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));
+   
+   float4 color = read_imagef(input,sampler,coord);
+   
+   float derivativeDifference = color.x - color.y;
+   float zElement = (color.z * 2.0f) - 1.0f;
+   
+   float cornerness = color.x + color.y - sqrt(derivativeDifference * derivativeDifference + 4.0f * zElement * zElement);
+   float sensitivity = 1.5f;
+   float rgba = cornerness * sensitivity;
+   
+   write_imagef(output,convert_int2(coord),(float4)(rgba,rgba,rgba,1.0f));
+}
+
+__kernel void cga_colorspace_filter(__read_only image2d_t input,
+                              __write_only image2d_t output){
+ 
+   const sampler_t sampler = CLK_FILTER_NEAREST |
+                             CLK_NORMALIZED_COORDS_FALSE|
+                             CLK_ADDRESS_CLAMP_TO_EDGE;
+
+   const int2 dim = get_image_dim(input);
+   
+   float2 coord = (float2)(get_global_id(0),get_global_id(1));  
+   
+   float2 sampleDivisor = (float2)(1.0f / 200.0f,1.0f / 320.0f);
+   
+   float2 samplePos = coord - fmod(coord,sampleDivisor);  
+   
+   float4 color = read_imagef(input,sampler,samplePos);  
+   
+   float4 colorCyan = (float4)(85.0f / 255.0f,1.0f,1.0f,1.0f);
+   float4 colorMagenta = (float4)(1.0f,85.0f / 255.0f,1.0f,1.0f);
+   float4 colorWhite = (float4)(1.0f,1.0f,1.0f,1.0f);
+   float4 colorBlack = (float4)(0.0f,0.0f,0.0f,1.0f);
+ 
+   float4 endColor;
+   float blackDistance = distance(color,colorBlack);
+   float whiteDistance = distance(color,colorWhite);
+   float magentaDistance = distance(color,colorMagenta);
+   float cyanDistance = distance(color,colorCyan);
+   
+   float4 finalColor;
+   float colorDistance = min(magentaDistance,cyanDistance);
+   colorDistance = min(colorDistance,whiteDistance);
+   colorDistance = min(colorDistance,blackDistance);
+   
+   if(colorDistance == blackDistance){
+       finalColor = colorBlack;
+   }else if(colorDistance == whiteDistance){
+       finalColor = colorWhite;
+   }else if(colorDistance == cyanDistance){
+       finalColor = colorCyan;
+   }else{
+       finalColor = colorMagenta;
+   }        
+   
+   write_imagef(output,convert_int2(coord),finalColor);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
 }

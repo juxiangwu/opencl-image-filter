@@ -10,14 +10,14 @@ using namespace std;
 
 int main(int argc,char * argv[])
 {
-    if(argc < 3){
-        std::cout << "usage:" << argv[0] << " <image> <kernel name>" << std::endl;
+    if(argc < 4){
+        std::cout << "usage:" << argv[0] << " <image> <kernel file> <kernel name>" << std::endl;
         return -1;
     }
     const char * imageFile = argv[1];
 //    const char * imageFile2 = argv[2];
 
-    const char * kernelFile = "kernels/filters.cl";
+    const char * kernelFile = argv[2];//"kernels/filters.cl";
     cv::Mat src = cv::imread(imageFile);
 //    cv::Mat src2 = cv::imread(imageFile2);
     cv::cvtColor(src,src,CV_BGR2RGBA);
@@ -150,7 +150,7 @@ int main(int argc,char * argv[])
      }
 
     //cl_kernel kernel = clCreateKernel(program,"sepia_filter2",&status);
-    cl_kernel kernel = clCreateKernel(program,argv[2],&status);
+    cl_kernel kernel = clCreateKernel(program,argv[3],&status);
 
     if(status != CL_SUCCESS){
         std::cerr << "cannot create kernel:" << status << std::endl;
